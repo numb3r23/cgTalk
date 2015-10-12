@@ -1,0 +1,974 @@
+<!doctype html>  
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    
+    <title>cgTalk 04 - Fun with distance fields</title>
+
+    <meta name="author" content="Sebastian Schaefer">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/23Theme.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/firecode.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  
+  <body>
+  
+<div class="reveal">
+
+  <!-- Used to fade in a background when a specific slide state is reached -->
+  <div class="state-background"></div>
+  
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+
+    <!-- Presentation-->
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+    <!-- Presentation-->
+    <section class="center">
+      <h1>cgTalk #04</h1>
+      <h3>Fun with distance fields</h3>
+      <p style="text-align:center;">Are we there yet?</p>
+      <p style="text-align:center;margin-top:325px;">
+        Sebastian Schaefer
+        <br />
+        <a target="_new" href="http://www.numb3r23.net">
+          <img alt="www.numb3r23.net" src="/images/ic_home_white_48dp.png" style="width:32px; height:32px;"/>
+        </a>
+        <a target="_new" href="mailto:sebastian.a.schaefer@gmail.com">
+          <img alt="sebastian.a.schaefer@gmail.com" src="/images/ic_email_white_48dp.png" style="width:32px; height:32px;"/>
+        </a>
+      </p>
+    </section>
+    <section>
+      <h2>Why?</h2>
+        <div class="imageBox" style="position:absolute;left:140px;top:100px;">
+        <img src="images/cgTalk04/sdf_valve.jpg" alt="sdf valve" style="width: 200px;height:170px;">
+        <br/>
+        <a target="_new" href="http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf">source: valve</a>
+        </div>
+
+        <div class="imageBox" style="position:absolute;right: 320px;top: 180px;">
+        <img src="images/cgTalk04/dstField2D_iq.png" alt="2D distance field" style="width: 250px;height:140px;">
+        <br/>
+        <a target="_new" href="https://www.shadertoy.com/view/Xds3zM">shadertoy (iq)</a>
+        </div>
+
+        <div class="imageBox" style="position:absolute;right: 10px;top: 140px;">
+        <img src="images/cgTalk04/dstField2D_meta.png" alt="2D distance field" style="width: 250px;height:200px;">
+        <br/>
+        <a target="_new" href="https://www.shadertoy.com/view/ltj3D3">shadertoy (the23)</a>
+        </div>
+
+        <div class="imageBox" style="position:absolute;left: -40px;top: 400px;">
+        <img src="images/cgTalk04/RayMarchIQ.png" alt="2D distance field" style="width: 300px;height:170px;">
+        <br/>
+        <a target="_new" href="https://www.shadertoy.com/view/4sS3zG">shadertoy (iq)</a>
+        </div>
+
+        <div class="imageBox" style="position:absolute;left: 260px;top: 400px;">
+        <img src="images/cgTalk04/UE4_Elemental_dynamic_global_illumination.jpg" alt="2D distance field" style="width: 300px;height:220px;">
+        <br/>
+        <a target="_new" href="http://advances.realtimerendering.com/s2012/">source: Martin Mittring</a>
+        </div>
+
+        <div class="imageBox" style="position:absolute;right: 0px;top: 380px;">
+        <img src="images/cgTalk04/Switch_DFAO_TestWall_02_Enabled.jpg" alt="2D distance field" style="width: 400px;height:280px;">
+        <br/>
+        <a target="_new" href="http://www.tomlooman.com/distance-fields-unreal-engine/">www.tomlooman.com - UE4</a>
+        </div>
+    </section>
+    <section class="center">
+      <h2>Agenda</h2>
+      <p>
+        <ul class="space">
+          <li>Distances</li>
+          <li>2D-Distance maps</li>
+          <li>2D-Distance functions</li>
+          <li>3D-Distance fields - functions</li>
+          <li>3D-Distance fields - geometries</li>
+        </ul>
+      </p>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Distance</h2>
+      </section>
+      <section>
+        <h3>Distance</h3>
+        <p>
+        What's distance?
+        <ul>
+          <li><i>the property created by space between two points</i></li>
+          <li>What's space? $~\rightarrow~\mathbb{R}^n \rightarrow \mathbb{R}^2, \mathbb{R}^3$</li>
+        </ul>
+        </p>
+        <br />
+        <p>
+        Distance functions <b>dist(p, q)</b>
+        <ul>
+          <li>euclidean distance:$~\textbf{dist}(p, q) = \sqrt{\sum_{i=0}^{n}{(p_i - q_i)^2}}$</li>
+          <li>manhattan distance:$~\textbf{dist}(p, q) = \sum_{i=0}^{n}{\lvert p_i - q_i\rvert}$</li>
+        </ul>
+        <div class="imageBox" style="position:absolute;right: -40px;top: 300px;">
+        <img src="images/cgTalk04/600px-Manhattan_distance.svg.png" alt="Manhattan Distance" style="width: 200px;height:200px;">
+        <br/>
+        <a target="_new" href="https://en.wikipedia.org/wiki/Taxicab_geometry#/media/File:Manhattan_distance.svg">source: wiki</a>
+        </div>
+        </p>
+      </section>
+      <section>
+        <h3>Distance fields</h3>
+        <p>
+        Distances (distance field values) can be obtained by
+        <div style="margin-bottom:65px;"></div>
+        <ul>
+          <li>sampling distance field <b>maps</b>
+            <ul>
+              <li>greyscale, rgba-encoded, ...</li>
+              <li>great for complex patterns (glyphs, ...)</li>
+            </ul>
+          </li>
+        </ul>
+        <div style="margin-bottom:100px;"></div>
+        <ul>
+          <li>evaluating distance <b>functions</b>
+            <ul>
+              <li>euclidean, manhattan, ...</li>
+              <li>no sampling!</li>
+              <li>only trivial "objects"</li>
+            </ul>
+          </li>
+        </ul>
+        </p>
+        <div class="imageBox" style="position:absolute;right: 0px;top: 150px;">
+        <img src="images/cgTalk04/dstField2DMap.png" style="width: 200px;height:200px;">
+        </div>
+        <div class="imageBox" style="position:absolute;right:0px;top:370px;">
+        <img src="images/cgTalk04/dstField2DEuclid.png" style="width: 200px;height:200px;">
+        </div>
+        <div class="imageBox" style="position:absolute;right:220px;top:370px;">
+        <img src="images/cgTalk04/dstField2DManhattan.png" style="width: 200px;height:200px;">
+        </div>
+      </section>
+      <section>
+        <h3>Using distances</h3>
+        <p>
+          Input
+          <ul>
+            <li>2D: texture Coordinate, 2D-coordinate on surface, ...</li>
+            <li>3D: generated 3D (camera)-ray, ...</li>
+          </ul>
+        </p>
+        <p>
+          Output:
+          <ul>
+            <li><b>boolean</b>: use <code class="GLSL">mix</code> to blend the "in"-color:
+            <pre><code>colRes = mix(colIn, colRes, step(0.0, distance));</code></pre>
+            </li>
+            <li><b>anti-aliasing</b> fade: 
+            <ul>
+              <li>use <code>fwidth</code> to calculate fade-width</li>
+              <li>blend between 0-1 using <code>smoothstep</code></li>
+            </ul>
+            <pre><code>colRes = mix(colIn, colRes, smoothstep(0.0, fwidth(distance), distance));</code></pre>
+            </li>
+            <li>bonus: widen the falloff for a <b>glow</b>
+            <pre><code>colRes = mix(colIn, colRes, smoothstep(0.0, glowDistance, distance));</code></pre>
+            </li>
+          </ul>
+        </p>
+        <div class="imageBox" style="position:absolute;right: -60px;top: 270px;">
+        <img src="images/cgTalk04/smoothstep.png" alt="glsl smoothste" style="width:255px;height:240px;margin:0;">
+        <br/>
+        <code class="glsl">smoothstep</code>
+        </div>
+
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>2D-Distance maps</h2>
+        <h3>SDF-Textures</h3>
+      </section>
+      <section>
+        <h3>SDF - Signed Distance Field</h3>
+        <ul class="space">
+          <li>
+            encode distance to the <b>other</b> side using signs 
+            <ul>
+              <li>
+                0, distance to 1: $ \rightarrow <0$
+              </li>
+              <li>
+                1, distance to 0: $ \rightarrow >0$
+              </li>
+            </ul>
+          </li>
+          <li>shift distance into "single-channel" range:
+            <ul>
+              <li>
+                $<0 \rightarrow [0; 0.5)$
+              </li>
+              <li>
+                $>0 \rightarrow (0.5; 1.0]$
+              </li>
+            </ul>
+        </ul>
+        <div class="imageBox" style="position:absolute;right: -30px;top: 80px;">
+        <img src="images/cgTalk04/sdf/test.png" alt="pattern" style="width:256px;height:256px;margin:0;">
+        <br/>
+        original
+        </div>
+
+        <div class="imageBox" style="position:absolute;right: -30px;top: 390px;">
+        <img src="images/cgTalk04/sdf/dfFull.png" alt="pattern" style="width:256px;height:256px;margin:0;">
+        <br/>
+        sdf
+        </div>
+      </section>
+      <section>
+      <h3>Using SDF 1/3</h3>
+      <p>
+      <ol>
+        <li>load small sdf-map with <b>bilinear</b> filter!</li>
+        <li>sample distance field texture</li>
+        <li>use <b>0.5</b> as an edge between <b>color A</b> and <b>color B</b></li>
+        <li>throw a <code>fwidth</code> in the <code>mix</code></li>
+      </ol>
+      </p>
+      <p>
+      <pre>
+      <code class="GLSL">uniform sampler2D u_SdfMap;
+
+  varying vec4 v_Color;
+  varying vec2 v_TexCoord;
+
+  void main() {
+    float distance = texture2D(u_SdfMap, v_TexCoord).a;
+    float width = fwidth(distance);
+    float alpha = smoothstep(0.5 - width, 0.5 + width, distance) * v_Color.a;
+    gl_FragColor = vec4(v_Color.rgb, alpha);
+  }    </code>
+      </pre>
+      </p>
+      <div style="text-align:center;">
+      <img src="images/cgTalk04/sdf/NearestVsBilinear.png" alt="pattern" style="margin:0;">
+      <br/>
+      nearest | bilinear
+      </div>
+      </section>
+      <section>
+      <h3>Using SDF 2/3</h3>
+      <p>
+      <ul>
+        <li>small sdf-map allows for large rendering<br/>
+        <li><b>fast</b>: single HW-based filtered value + minimal computation</li>
+        <li>dynamic <b>thickness</b>: change the edge-value</li>
+      </ul>
+      </p>
+        <div class="imageBox" style="position:absolute;left: 100px;top: 300px;">
+          <img src="images/cgTalk04/sdf_valve.jpg" alt="pattern" style="width:330px;height:280px;margin:0;">
+          <br/>
+          from 64x64
+          <br /><br/>
+           <a target="_new" href="http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf">source: valve</a>
+        </div>
+        <div class="imageBox" style="position:absolute;right: 140px;top: 300px;">
+          <img src="images/cgTalk04/Add.png" alt="pattern" style="width:330px;height:280px;margin:0;">
+          <br/>
+          320x320
+        </div>
+        <div class="imageBox" style="position:absolute;right: -50px;top: 400px;">
+          <img src="images/cgTalk04/sdf_generation/final.jpg" alt="pattern" style="width:100px;height:100px;margin:0;">
+          <br/>
+          sdf:32x32
+        </div>
+      </section>
+      <section>
+      <h3>Using SDF 3/3</h3>
+      <p>
+      Problems with SDF's
+      <ul>
+        <li>fine structures are lost in SDF sampling</li>
+        <li>bilinear interpolation can be recognized (see <a target="_new" href="https://lambdacube3d.wordpress.com/2014/11/12/playing-around-with-font-rendering/">here</a>)</li>
+        <li>multiple bit-planes not always combinable (see <a target="_new" href="https://gpuhacks.wordpress.com/2013/07/08/signed-distance-field-rendering-of-color-bit-planes/">here</a>)</li>
+      </ul>
+        <div class="imageBox" style="position:absolute;left: -30px;top: 300px;">
+        <img src="images/cgTalk04/sdf/sdf-corners.png" alt="pattern" style="width:300px;height:230px;margin:0;">
+        </div>
+        <div class="imageBox" style="position:absolute;left: 130px;top: 300px;">
+        <img src="images/cgTalk04/sdf/sdf-cdf-comparison.png" alt="pattern" style="width:300px;height:230px;margin:0;">
+        </div>
+        <div class="imageBox" style="position:absolute;left: 10px;top: 480px;">
+        <img src="images/cgTalk04/sdf/lafonten5-combine1.png" alt="pattern" style="width:300px;height:205px;margin:0;">
+        <br />
+        <a target="_new" href="https://lambdacube3d.wordpress.com/2014/11/12/playing-around-with-font-rendering/">source: lambdacube3d</a>
+        </div>
+        <div class="imageBox" style="position:absolute;right: 100px;top: 300px;">
+        <img src="images/cgTalk04/sdf/bildschirmfoto-2013-07-08-um-14-01-41.png" alt="pattern" style="width:450px;height:305px;margin:0;">
+        </div>
+        <div class="imageBox" style="position:absolute;right: -40px;top: 350px;">
+        <img src="images/cgTalk04/sdf/bildschirmfoto-2013-07-08-um-12-56-15.png" alt="pattern" style="width:300px;height:300px;margin:0;">
+        <br />
+        <a target="_new" href="https://gpuhacks.wordpress.com/2013/07/08/signed-distance-field-rendering-of-color-bit-planes/">source: gpuhacks</a>
+        </div>
+      </p>
+      </section>
+      <section>
+      <h3>Generating a SDF</h3>
+      <p>
+      Basic idea:
+      <ol>
+        <li>Input: 
+          <ul>
+            <li>large texture (e.g. $4096^2$)</li>
+            <li>target output size (e.g. $64^2$)</li>
+            <li>spread for effect (e.g. $32$)</li>
+          </ul>
+        </li>
+        <li>Calculate distance field for target texture:
+          <ul>
+            <li>for every texel calc corresponding in/out value</li>
+            <li>calculate distance to nearest "other" texel</li>
+          </ul>
+        </li>
+        <li>map distance into target-range</li>
+      </ol>
+      </p>
+      <p>
+      <i>Note: there are more efficient algorithms out there.</i>
+      </p>
+      </section>
+      <section>
+      <h3>Generating a SDF on the GPU 1/2</h3>
+      <p>
+      Now let's use some shaders for that :-)
+      <ul>
+        <li>use ping-pong Render-To-Texture: A $\rightarrow$ B $\rightarrow$ A</li>
+        <li> Filter original-sized images with simple GLSL Image-Filters:
+          <ol>
+            <li>Store marked bit & target vector to <i>other side</i></li>
+            <li>Detect edges in source image: <b>mark</b> it, target=(0/0)</li>
+            <li>Iterative PP-RTT until whole texture marked:
+              <ul>
+                <li>For every pixel of current texture
+                  <ul>
+                    <li>if (not marked) & any(neighbour $n$ marked): 
+                      <ul>
+                        <li>mark current</li>
+                        <li>target = min($n$.target + ($n$ - current))</li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+            <li>Convert target vector to distance (max distance = $s\sqrt{2}$)</li>
+            <li>Render texture into final texture for target resolution</li>
+          </ol>
+        </li>
+      </ul>
+      </p>
+      </section>
+      <section>
+      <h3>Generating a SDF on the GPU 2/2</h3>
+        <div class="imageBox" style="position:absolute;left: -30px;top: 300px;">
+          <img src="images/cgTalk04/sdf_generation/start.jpg" alt="pattern" style="width:300px;height:300px;margin:0;">
+          <br/>
+          input image
+        </div>
+
+        <div class="imageBox" style="position:absolute;left: 270px;top: 200px;">
+          <img src="images/cgTalk04/sdf_generation/step_0.jpg" alt="pattern" style="width:200px;height:200px;margin:0;">
+          <br/>
+          init
+        </div>
+        <div class="imageBox" style="position:absolute;left: 510px;top: 200px;">
+          <img src="images/cgTalk04/sdf_generation/step_16.jpg" alt="pattern" style="width:200px;height:200px;margin:0;">
+          <br/>
+          step 16
+        </div>
+        <div class="imageBox" style="position:absolute;left: 350px;top: 470px;">
+          <img src="images/cgTalk04/sdf_generation/step_4.jpg" alt="pattern" style="width:200px;height:200px;margin:0;">
+          <br/>
+          step 4
+        </div>
+        <div class="imageBox" style="position:absolute;left: 580px;top: 470px;">
+          <img src="images/cgTalk04/sdf_generation/step_32.jpg" alt="pattern" style="width:200px;height:200px;margin:0;">
+          <br/>
+          step 32
+        </div>
+
+        <div class="imageBox" style="position:absolute;right: -30px;top: 400px;">
+          <img src="images/cgTalk04/sdf_generation/final.jpg" alt="pattern" style="width:100px;height:100px;margin:0;">
+          <br/>
+          output image
+        </div>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>2D-Distance functions</h2>
+      </section>
+      <section >
+        <h3>2D-Distance functions</h3>
+        <p>
+        Alternative to distance maps: <b>evaluate</b> a distance function!
+        <ul>
+          <li>For certain primitives a function is <b>easy</b>:
+          <pre><code>circle(pos, center, rad)  = length(pos - center) - rad;
+diamond(pos, center, rad) = dot(abs(pos - center), vec2(1.0)) - rad;</code></pre>
+          </li>
+          <li>Even <b>complex</b> shapes can be realized: <a target="_new" href="http://jcgt.org/published/0003/04/01/">Antialiased 2D Grid, Marker, and Arrow Shaders</a></li>
+          <li>works great with fragment derivative <b>antialiasing</b>!</li>
+          <li>functions can be <b>combined</b> (think CSG!) and <b>repeated</b>
+          <pre><code>union(dist1, dist2)  = min(dist1, dist2);
+subtract(dist1, dist2) = max(-dist1, dist2);
+intersect(dist1 = dist2) = max(dist1, dist2);</code></pre>
+          </li>
+          <li>the <b>coordinate system</b> can be <b>transformed</b></li>
+        </ul>
+        </p>
+      </section>
+      <section>
+        <h3>Simple 2D-Distance functions 1/2</h3>
+        <p>
+          <pre><code>circle(pos, center, rad)  = sqrt(pow(pos - center, 2.0)) - rad;
+diamond(pos, center, rad) = dot(abs(pos - center), vec2(1.0)) - rad;</code></pre>
+        </p>
+        <canvas data-sample="simple2Ddistance1"></canvas>
+      </section>
+      <section>
+        <h3>Simple 2D-Distance functions 2/2</h3>
+        <p>
+          <pre><code>union(dist1, dist2)  = min(dist1, dist2);
+subtract(dist1, dist2) = max(-dist1, dist2);
+intersect(dist1 = dist2) = max(dist1, dist2);
+rotate(coord) = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * coord;</code></pre>
+        </p>
+        <canvas data-sample="simple2Ddistance2"></canvas>
+      </section>
+      <section>
+        <h3>2D Metaballs</h3>
+        <p>
+        <ul>
+        <li>Metaballs are organic looking objects, that can "stick" together.</li>
+        <li>Each ball is defined through a distance function $f$:
+        $$f(x, y, z) = \frac{1}{(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2}$$
+        </li>
+        <li>The distance of multiple metaballs is added together:
+        $$balls(x, y, z) = \sum_{i=0}^{n}f_i(x, y, z)$$
+        </li>
+        <li>If the summed distance is bigger than a <b>threshold</b>, the metaball is depicted solid.</li>
+        </ul>
+        </p>
+          <div class="imageBox" style="text-align:center;">
+          <img src="images/cgTalk04/Metaball_contact_sheet.png" alt="Metaballs" style="width: 350px;height:100px;background:#fff;">
+          <br/>
+          <a target="_new" href="https://en.wikipedia.org/wiki/Metaballs#/media/File:Metaball_contact_sheet.png">source: wiki</a>
+          </div>
+      </section>
+      <section>
+        <h3>Animating multiple 2D Metaballs</h3>
+          <canvas data-sample="metaballs2D"></canvas>
+          <br/>
+          <a target="_new" href="https://www.shadertoy.com/view/ltj3D3">shadertoy (the23)</a>
+      </section>
+      <section>
+        <h3>Animating 2D-Distance functions</h3>
+        <p>
+        Let's see what we can do with the following setup:
+        <ul>
+          <li>distance functions: circle + x-axis-parallel rectangle</li>
+          <li>screen segmented into 2d-grid of cells</li>
+          <li>use time for animation</li>
+        </ul>
+        </p>
+          <div class="imageBox" style="text-align:center;">
+            <img src="images/cgTalk04/pacman/grid.png" alt="grid" style="width: 256px;height:256px;">
+            <img src="images/cgTalk04/pacman/rectangle.png" alt="rectangle" style="width: 256px;height:256px;">
+            <img src="images/cgTalk04/pacman/circle.png" alt="circle" style="width: 256px;height:256px;">
+          </div>
+          <i>Hint: We could move something circle-like along some cells, possibly highlighted by a rect!</i>
+      </section>
+      <section>
+        <h3>Animating 2D-Distance functions</h3>
+        <p style="text-align:center;">
+        <canvas data-sample="pacman"></canvas>
+        </p>
+      </section>
+      <section>
+        <h3>Complex example: 2D-Distance functions</h3>
+        <p>
+        Slightly different scenario:
+        <ul>
+          <li>Keep the circle.</li>
+          <li>Add a distance function for a heart. (tad complicated, see <a target="_new" href="http://jcgt.org/published/0003/04/01/">Antialiased 2D Grid, Marker, and Arrow Shaders</a>....)</li>
+          <li>Add a distance function for a quad:
+          <pre><code>vec3 drawQuad(vec3 col, vec2 coord, 
+              vec2 p1, vec2 p2, vec2 p3, vec2 p4, 
+              float thickness, vec3 oldColor)
+{
+    float sideA = sign(cross2D(coord - p1, p2 - p1));
+    float sideB = sign(cross2D(coord - p2, p3 - p2));
+    float sideC = sign(cross2D(coord - p3, p4 - p3));
+    float sideD = sign(cross2D(coord - p4, p1 - p4));
+    float dst = abs(sideA - sideB) + abs(sideB - sideC) 
+              + abs(sideC - sideD) + abs(sideD - sideA);
+    dst = clamp(dst, 0.0, 1.0);
+
+    vec3 res = mix(col, oldColor, dst);
+    res = drawLine(col, coord, p1, p2, thickness, res);
+    res = drawLine(col, coord, p2, p3, thickness, res);
+    res = drawLine(col, coord, p3, p4, thickness, res);
+    res = drawLine(col, coord, p4, p1, thickness, res);
+    return res;
+}</code></pre>
+          </li>
+        </ul>
+        </p>
+      </section>
+      <section>
+        <h3>Complex example: 2D-Distance functions</h3>
+        <p>
+          <div class="imageBox" style="text-align:center;">
+          <img src="images/cgTalk04/portal.png" alt="portal shadertoy">
+          <br/>
+          <a target="_new" href="https://www.shadertoy.com/view/4lfXWS">shadertoy (the23)</a>
+          </div>
+        
+        </p>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>3D-Distance fields</h2>
+        <h3>Raymarching - Functions</h3>
+      </section>
+      <section class="center">
+        <h3>(Recap) Raytracing</h3>
+        <p>
+        Raytracing is a rendering method
+        <ul>
+          <li>Rays (from the camera) are <b>traced</b> through the scene:<br/>
+          <div class="imageBox" style="text-align:center;">
+          <img src="images/cgTalk04/800px-Ray_trace_diagram.svg.png" alt="Raytracing" style="width: 400px;height:266px;background:#fff;">
+          <br/>
+          <a target="_new" href="https://commons.wikimedia.org/wiki/File:Ray_trace_diagram.svg">source: wiki</a>
+          </div>
+          </li>
+          <li>A view (or secondary, ...) ray is <b>intersected</b> with the scene</li>
+          <li>Result is an exact, "singular" hit with "noise" artefacts</li>
+        </ul>
+        </p>
+      </section>
+      <section class="center">
+        <h3>Raymarching</h3>
+        <p>
+        Raymarching is related to raytracing
+        <ul>
+          <li>Rays from the camera are <b>marched</b> through the scene:<br/>
+          <div class="imageBox" style="text-align:center;">
+          <img src="images/cgTalk04/08_displacement_05.jpg" alt="Raymaching" style="width: 400px;height:244px;background:#fff;">
+          <br/>
+          <a target="_new" href="http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter08.html">source: GPU-Gems2</a>
+          </div>
+          </li>
+          <li>At every step <b>distances</b> to all scene objects are evaluated</li>
+          <li>The smallest distances leads to a <b>new startpoint</b></li>
+          <li>The march terminates if either 
+          <br/>distance $<$ threshold || z-Limit || step limit
+        </ul>
+        </p>
+      </section>
+      <section class="center">
+        <h3>Raymarching</h3>
+        <p>
+        Implementation in a fragment shader:
+        <pre><code>r = generateRayForProjection(texCoord, fov);
+while !(step-limit || z-limit)
+    d = getClosestDistanceWithScene
+    if (hitpoint < threshold)
+        break; CommenceShading
+    r.origin += r.dir * d;
+if CommenceShading
+    Potentially repeat above (shadow, reflection, AO, ...)</code></pre>
+          <div class="imageBox" style="text-align:center;">
+            <img src="images/cgTalk04/rayMarchIterations.png" alt="iterations" style="width: 570px;height:294px;background:#fff;">
+            <br/>
+            iterations visualized <br /> <br/><div class="negPadding" />
+            <a href="http://9bitscience.blogspot.co.uk/2013/07/raymarching-distance-fields_14.html" target="_new">source: 9bitscience</a>
+          </div>
+        </p>
+      </section>
+
+      <section class="center">
+        <h3>Raymarching - Distance Functions</h3>
+        <p>
+        Great overview of distance functions <a target="_new" href="http://iquilezles.org/www/articles/distfunctions/distfunctions.htm">here</a>
+        <table>
+          <tr>
+            <td><img src="images/cgTalk04/rayMarch/gfx02.png"></td>
+            <td><img src="images/cgTalk04/rayMarch/gfx03.png"></td>
+            <td><img src="images/cgTalk04/rayMarch/gfx09.png"></td>
+          </tr>
+          <tr>
+            <td><img src="images/cgTalk04/rayMarch/gfx10.png"></td>
+            <td><img src="images/cgTalk04/rayMarch/gfx11.png"></td>
+            <td><img src="images/cgTalk04/rayMarch/gfx22.png"></td>
+          </tr>
+        </table>
+        <ul>
+          <li>Distort/transform the input position for a model</li>
+          <li>repeat the primitive position</li>
+          <li>CSG <code>(a, b)</code>: 
+            <ul>
+              <li>union: <code>min(a, b)</code></li>
+              <li>subtract: <code>max(-a, b)</code></li>
+              <li>intersect: <code>max(a, b)</code></li>
+            </ul>
+          </li>
+        </ul>
+        <div class="imageBox" style="position:absolute;right:340px;top:520px;">
+        <img src="images/cgTalk04/rayMarch/gfx05.png">
+        </div>
+        <div class="imageBox" style="position:absolute;right:200px;top:560px;">
+        <img src="images/cgTalk04/rayMarch/gfx06.png">
+        </div>
+        <div class="imageBox" style="position:absolute;right:60px;top:600px;">
+        <img src="images/cgTalk04/rayMarch/gfx07.png">
+        </div>
+        </p>
+      </section>
+      <section>
+        <h3>Raymarching - Scene</h3>
+        Here's a full, complex example on what can be done:
+        <div class="imageBox" style="text-align:center;">
+        <img src="images/cgTalk04/rayMarchPrimitives.png" alt="rayMarch shadertoy">
+        <br/>
+        <a target="_new" href="https://www.shadertoy.com/view/Xds3zN">shadertoy (iq)</a>
+        </div>
+      </section>
+      <section class="center">
+        <h3>Raymarching - Illumination</h3>
+        <p>
+        Shading needs a <b>normal</b>: evaluate the scene around the hitpoint to obtain new "hitpoints" that form the normal.
+        </p>
+        <p>
+        Shadows
+        <ul>
+          <li>The amount of light that shines onto a surface determines if it's in shadow.</li>
+          <li>This is determined by the visibility of the lights from a surfacepoint.</li>
+          <li>Trace again: from light towards hitpoint: 
+            <ul>
+              <li>if you hit something else, hitpoint must be in shadow.</li>
+            </ul>
+          </li>
+          <li>Bonus: soft shadows (penumbra) are <a target="_new" href="http://iquilezles.org/www/articles/rmshadows/rmshadows.htm">cheap</a> :-)</li>
+        </ul>
+        <div class="imageBox" style="text-align:center;">
+        <img src="images/cgTalk04/rayMarch/penumbra.png">
+        </div>
+        </p>
+      </section>
+      <section class="center">
+        <h3>Raymarching - AO & reflection</h3>
+        <p>
+        Marching the scene from the hitpoint along the normal can be usefull for other Illumination effects:
+        <ul>
+          <li>AmbientOcclusion is calculated by marching the scene around the normal</li>
+          <li>Reflections can be calculated by marching the scene along the normal </li>
+        </ul>
+        </p>
+      </section>
+
+    </section>
+    <section>
+      <section class="center">
+        <h2>3D-Distance fields</h2>
+        <h3>Raymarching - Geometries</h3>
+      </section>
+      <section class="center">
+        <h3>Raymarching - Geometries</h3>
+        <p>
+        In most <i>real life</i> applications we don't have many distance functions:
+          <ul>
+            <li>we have polygonal <b>geometries</b>,</li>
+            <li>where it's pretty darn <b>hard</b> to come up with distance functions!</li>
+          </ul>
+          </p>
+          <p>
+          In order to still use the benefits, we need to <b>combine</b>
+            <ul>
+              <li>triangle-based geometries and</li>
+              <li>distances for them</li>
+            </ul>
+        <br/>
+        ... something like the <b>distance maps</b>, but <b>3D</b>...
+        <br/> <br/>
+        enter.... <i>*drummroll*</i>
+        </p>
+      </section>
+      <section class="center">
+        <h3>SVO - Sparse Voxel Octrees</h3>
+        what?
+      </section>
+      <section>
+        <h3>SVO - Sparse Voxel Octrees</h3>
+        <p>
+        Let's unroll it back-to-front:
+        <ul class="space">
+          <li>
+            <b>Octree</b>: 3D-equivalent of a 2D-Quadtree of a 1D-binary tree. 
+            <ul>
+              <li>base: cube, that can be split along 3 axis in 8 sub-cubes</li>
+            </ul>
+          </li>
+          <li>
+            <b>Voxel</b>: each node contains volumetric information:
+            <ul>
+              <li>what's in that space, what's inside the cube?</li>
+            </ul>
+          </li>
+          <li>
+            <b>Sparse</b>: the octree of voxels is sparsely populated. Easy :-).
+          </li>
+        </ul>
+        </p>
+      </section>
+      <section>
+        <h3>SVO - Sparse Voxel Octrees</h3>
+        <div class="imageBox">
+        <table style="padding:0; margin:0;">
+          <tr>
+            <td style="padding:0">
+        <img class="straight" src="images/cgTalk04/cudaGigaVoxels_LionOctree_01.png" alt="Octree Lion" style="width: 455px;height:455px;">
+            </td>
+            <td style="padding:0">
+        <img class="straight" src="images/cgTalk04/cudaGigaVoxels_DragonOctree_02.png" alt="Octree Stanford Dragon" style="width: 455px;height:455px;">
+            </td>
+          </tr>
+        </table>
+        <br/>
+        <a target="_new" href="http://maverick.inria.fr/Membres/Cyril.Crassin/img/">source: Cyril Crassin</a>
+        </div>
+      </section>
+      <section>
+        <h3>SVO - Sparse Voxel Octrees</h3>
+        <p>
+        SVOs:
+        <ul>
+          <li>Huge Octree (GB's) on HD, load needed parts into memory</li>
+          <li>Hybrid approach:
+            <ul>
+              <li>Primary rays (cam): push geometry through rasterizer
+              <li>Following rays: Cone trace through SVO</li>
+            </ul>
+            Cone tracing: inexact, but not noisy $\rightarrow$ perfect for lighting!
+          </li>
+        </ul>
+        </p>
+        <p>
+        Voxel cone tracing:
+        <ul>
+          <li>Start with bias size</li>
+          <li>Progressively increase step size</li>
+          <li>Lookup radiance & occlusion</li>
+          <li>Accumulate light with occlusion</li>
+          <li>Stop if occluded or too far</li>
+          <li>Bonus: smooth occluders are further away $\rightarrow$ cheaper</li>
+        </ul>
+        </p>
+        <div class="imageBox" style="position:absolute;right: -100px;top: 340px;">
+        <img src="images/cgTalk04/VoxelConeTracing.png" alt="Voxel Cone Tracing" style="height:250px;">
+        <br/>
+        <a target="_new" href="http://advances.realtimerendering.com/s2012/">source: Martin Mittring</a>
+        </div>
+      </section>
+      <section>
+        <h3>SVO - Sparse Voxel Octrees</h3>
+        <p>
+        How do we use the SVO?
+        <ul>
+          <li>Store distances in the octree</li>
+          <li>Store material information</li>
+        </ul>
+        </p>
+        <br/>
+        <p>
+        How do we store things in there?
+        <br/>
+        How does the geometry come into play?
+        <ul>
+          <li><b>Voxelize the scene into the octree!</b></li>
+          <li>At <b>runtime</b></li>
+        </ul>
+        <br/>
+        ... and no, I'm not kidding....
+        </p>
+      </section>
+      <section>
+        <h3>Unreal Engine 4</h3>
+        <img src="images/cgTalk04/UE4_Elemental_dynamic_global_illumination.jpg" alt="UE4 Elemental Demo">
+        <br/>
+        <a target="_new" class="imageBox" href="http://www.geforce.com/sites/default/files-world/gallery_images/stunning-videos-show-unreal-engine-4s-next-gen-gtx-680-powered-real-time-graphics/UE4_Elemental_dynamic_global_illumination.jpg">source: www.geforce.com</a>
+      </section>
+     <section class="center">
+        <h3>UE4 - Voxel Lighting</h3>
+        <img src="images/cgTalk04/UE4_VoxelLighting.png" alt="UE4 Voxel Lighting Demo">
+        <br/>
+        <a target="_new" class="imageBox" href="http://advances.realtimerendering.com/s2012/">source: Martin Mittring</a>
+      </section>
+      <section class="center">
+        <h3>UE4 - Voxel Lighting</h3>
+        <div class="imageBox">
+        <table style="padding:0; margin:0;">
+          <tr>
+            <td style="padding:0">
+            Voxel Lighting Data<br/>
+        <img class="straight" src="images/cgTalk04/UE4_VoxelLighting_Data.jpg" alt="Octree Lion" style="width: 450px;height:320px;">
+            </td>
+            <td style="padding:0">
+            Full 3D-Scene<br/>
+        <img class="straight" src="images/cgTalk04/UE4_VoxelLighting_Final.jpg" alt="Octree Stanford Dragon" style="width: 450px;height:320px;">
+            </td>
+          </tr>
+        </table>
+        <br/>
+        <a target="_new" class="imageBox" href="http://advances.realtimerendering.com/s2012/">source: Martin Mittring</a>
+        </div>
+      </section>
+      <section>
+        <h3>UE4 - Elemental Demo</h3>
+        <iframe class="stretch" src="http://www.youtube.com/embed/dD9CPqSKjTU?wmode=opaque&rel=0" frameborder="0" allowfullscreen=""></iframe> 
+      </section>
+    </section>
+    <section class="center">
+      <h2>Done.</h2>
+      <h3>Questions?</h3>
+    </section>
+
+  </div>
+</div>
+
+<script>
+
+// load the WebGL examples & initialize the shaders
+function loadSamples() {
+  head.js(
+    "js/samples/simple2Ddistance1.js",
+    "js/samples/simple2Ddistance2.js",
+    "js/samples/metaballs2D.js",
+    "js/samples/pacman.js",
+    LoadShaders);
+}
+
+// presentation specific javascript setup
+function revealReadyCallBack()
+{
+  // We'll use some WebGL
+  head.js("lib/js/three.min.js");
+  head.js("lib/js/webgl-utils.js");
+  head.js("lib/js/webgl-debug.js");
+
+  // and other things
+  head.js("js/stats_bootstrap.js");
+  head.js("js/sampleLoader.js", loadSamples);
+
+  head.js("js/dat.gui.bootstrap.js");
+}
+</script>
+  
+    <!-- Optional libraries for code syntax highlighting and classList support in IE9 -->
+    <script src="lib/js/head.min.js"></script>
+
+    <script>
+      // Load the main reveal.js script
+      head.js('js/reveal.min.js', function() {
+        // Parse the query string into a key/value object
+        var query = {};
+
+        location.search.replace( /[A-Z0-9]+?=(\w*)/gi, function(a) {
+          query[ a.split( '=' ).shift() ] = a.split( '=' ).pop();
+        } );
+
+        // Fires when a slide with data-state=customevent is activated
+        Reveal.addEventListener( 'customevent', function() {
+          // console.log( '"customevent" has fired' );
+        } );
+
+        // Fires each time a new slide is activated
+        Reveal.addEventListener( 'slidechanged', function( event ) {
+          // event.previousSlide, event.currentSlide, event.indexh, event.indexv
+        } );
+
+        Reveal.initialize({
+          // Display controls in the bottom right corner
+          controls: true,
+          progress: true,
+          history: true,
+          loop: false,
+          mouseWheel: false,
+          rollingLinks: true,
+          theme: 'beige', 
+
+          center:false,
+
+          math: {
+            mathjax: 'https://cdn.mathjax.org/mathjax/latest/MathJax.js',
+                config: 'TeX-AMS_HTML-full'
+            },
+
+            dependencies: [
+            { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+            { src: 'plugin/zoom-js/zoom.js', async: true },
+            { src: 'plugin/notes/notes.js', async: true },
+            { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+            { src: 'socket.io/socket.io.js', async: true, condition: function() { return window.location.host === 'localhost:1947'; } },
+            { src: 'plugin/speakernotes/client.js', async: true, condition: function() { return window.location.host === 'localhost:1947'; } },
+                { src: 'plugin/math/math.js', async: true },
+            ],
+
+          // Transition style
+          transition: query.transition || 'linear' // default/cube/page/concave/linear(2d)
+        });
+        Reveal.addEventListener( 'ready', function( event ) {
+          if (typeof(revealReadyCallBack) == "function")
+          {
+            revealReadyCallBack();
+          }
+        } );
+        Reveal.configure({ slideNumber: 'c / t' });
+      } );
+      
+      // Load third party scripts
+      head.js("lib/js/jquery.min.js");
+      head.js("lib/js/jquery.hotkeys.js");
+      head.js("lib/js/underscore.min.js");
+      head.js("lib/js/dat.gui.js");
+      head.js("lib/js/EventEmitter.js");
+
+    </script>
+  
+  
+  </body>
+</html>
+

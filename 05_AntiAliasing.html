@@ -1,0 +1,732 @@
+<!doctype html>  
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    
+    <title>cgTalk 05 - (Anti-)Aliasing</title>
+
+    <meta name="author" content="Sebastian Schaefer">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/23Theme.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/firecode.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  
+  <body>
+  
+<div class="reveal">
+
+  <!-- Used to fade in a background when a specific slide state is reached -->
+  <div class="state-background"></div>
+  
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+
+    <!-- Presentation-->
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+    <!-- Presentation-->
+    <section class="center">
+      <h1>cgTalk #05</h1>
+      <h3>Anti-Aliasing</h3>
+      <p style="text-align:center;margin-top:325px;">
+        Sebastian Schaefer
+        <br />
+        <a target="_new" href="http://www.numb3r23.net">
+          <img alt="www.numb3r23.net" src="images/ic_home_white_48dp.png" style="width:32px; height:32px;"/>
+        </a>
+        <a target="_new" href="mailto:sebastian.a.schaefer@gmail.com">
+          <img alt="sebastian.a.schaefer@gmail.com" src="images/ic_email_white_48dp.png" style="width:32px; height:32px;"/>
+        </a>
+      </p>
+    </section>
+    <section>
+    <h2>A note on navigation</h2>
+      <p style="text-align:center;margin-top:200px;">
+        <ul style="margin-left:23%">
+            <li><strong>space</strong> for the next slide</li>
+            <li><strong>backspace</strong> for the previous slide</li>
+            <li><strong>left/right</strong> to jump to the next chapter</li>
+            <li><strong>up/down</strong> to navigate in current chapter</li>
+        </ul>      
+    </p>
+    </section>
+    <section>
+        <section class="center">
+            <h2>Why?</h2>
+            2 Slides from Siggraph 2012's 
+            <a href="http://advances.realtimerendering.com/s2012/">Advances in Real-Time Rendering in Games</a> Talk <br/><br/><b>Rock-Solid Shading: Image Stability without Sacrificing Detail</b><br/><br/>
+            by <a href="http://blog.selfshadow.com">Stephen Hill</a> &amp; Dan Baker...
+        </section>
+        <section class="center">
+            <img src="images/cgTalk05/ShaderAliasingAnonymous_1.png">
+        </section>
+        <section class="center">
+            <img src="images/cgTalk05/ShaderAliasingAnonymous_2.png">
+        </section>
+        <section class="center">
+        <h3>Aliasing</h3>
+            <img src="images/cgTalk05/Aliasing.jpg">
+            <a href="http://www.kotaku.com.au/2011/12/what-is-fxaa/" >www.kotaku.com.au</a>
+            <br/>
+        <br/>
+        </section>
+        <section class="center">
+        <h3>Aliasing</h3>
+            <img src="images/cgTalk05/Anti-Aliasing.jpg">
+            <br/>
+            (nvidia driver tool on windows)
+        <br/>
+        </section>
+        <section class="center">
+        <h3>Aliasing</h3>
+            <img src="images/cgTalk05/MirrorsEdge.png">
+            <br/>
+        <a href="http://www.eurogamer.net/videos/digitalfoundry-mirrors-edge-anti-aliasing-test" target="_new">Processing Mirror's Edge on PS3</a>
+        <br/>
+        </section>
+    </section>
+    <section class="center">
+      <h2>Agenda</h2>
+      <p>
+        <ol class="space">
+          <li>What's Aliasing?</li>
+          <li><b>AA</b>: Brute-Force</li>
+          <li><b>AA</b>: Rendering smart</li>
+          <li><b>AA</b>: PostProcess</li>
+          <li><b>AA</b>: Animation aware</li>
+          <li>Conclusions</li>
+        </ol>
+      </p>
+    </section>
+    <section>
+      <section class="center">
+        <h2>What's Aliasing?</h2>
+        Signals &amp; sampling...
+      </section>
+      <section>
+        <h3>Signals</h3>
+        <p>
+        To understand <b>aliasing</b> we need to understand <b>images</b>
+        <ul>
+          <li>an image is a signal</li>
+          <li>a digital/raster image is a <b>sampled</b> signal</li>
+        </ul>
+        <br/>
+        <ul>
+          <li>to render is <b>to sample</b> a signal</li>
+          <li>to display a raster image is <b>to reconstruct</b></li>
+        </ul>
+        </p>
+      </section>
+      <section>
+        <h3>Alias</h3>
+        <p>
+        An <b>alias</b> is the effect when two <b>different signals</b> become <b>indistinguishable</b>. The effect can be seen with a simple sine-wave:
+        </p>
+            <img style="background:white;" src="images/cgTalk05/AliasingSines.svg">
+        <p>
+        The <font color="red">original signal</font> is sampled with a <font color="orange">too low frequency</font> . The <font color="orange">samplepoints</font> match a signal with a <font color="blue">much lower frequency</font>.
+        <br/>
+        This is also serves as an explanation for moiré-patterns. It's just a bit more complex for color images.
+        </p>
+      </section>
+      <section>
+        <h3>Moiré</h3>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/moire_1.gif">
+              <br/>
+              Source: <a href="http://giphy.com/gifs/art-geometric-minimal-3oEduVnKyGhXg5shJC" target="_new">giphy.com/</a>
+            </td>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/moire_2.gif">
+              <br/>
+              Source: <a href="http://giphy.com/gifs/math-mathematica-lines-BzcFgND8fWk1i" target="_new">giphy.com/</a>
+            </td>
+          </tr>
+        </table>
+      </section>
+      <section>
+        <h3>Nyquist</h3>
+        <p>
+            Ultimately the aliasing is created by <b>undersampling</b> the signal.
+        </p>
+        <br/>
+        <p>
+        Sampling above the <b>Nyquist-frequency</b> $n$ allows to faithfully reproduce a signal with frequency $f$: $$n_{\text{nyquist}} \geq 2 \cdot f.$$</p>
+        <p>
+        <br/>
+        Example:<br/>
+        A CD has 44100 samples/sec, the highest frequency is $n = 22050$hz. In such a situation the signal <b>should</b> be filtered with <b>low-pass filter</b> with $22050$hz.
+        </p>
+        <p>
+        <i>Note: a visual low-pass filter is a gaussian blur. Just sayin'.</i>
+        </p>
+      </section>
+      <section>
+        <h3>Sampling</h3>
+
+        <p>For each pixel there is a decision if an object is seen below it. </p>
+        <ul>
+        <li>Evaluation in middle of pixel</li>
+        <li>Ideally: wider impulse that covers the inside of the pixel</li>
+        <li>Reality: infitely small <i>needle impulse</i></li>
+        </ul>
+
+        <img style="background:white;" width="500" src="images/cgTalk05/triangles.png"><br/>
+        Source: <a href="http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-837-computer-graphics-fall-2012/lecture-notes/MIT6_837F12_Lec21.pdf" target="_new">ocw.mit.edu/...</a>
+      </section>
+      <section>
+        <h3>Reconstruction</h3>
+
+        <p>A raster image can be displayed at <em>any</em> resolution:</p>
+
+        <ul>
+        <li>this is ultimately sampling of the image</li>
+        <li>new aliasing issues can be created</li>
+        </ul>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" width="400" src="images/cgTalk05/trilinear_1.png"><br/>
+              <img style="background:white;" width="400" src="images/cgTalk05/trilinear_2.png"><br/>
+            </td>
+            <td>
+              <img style="background:white;" width="400" src="images/cgTalk05/fig25-01a.jpg">
+            </td>
+          </tr>
+          <tr>
+            <td><a href="http://www.adobe.com/devnet/flashplayer/articles/mipmapping.html">adobe.com</a></td>
+            <td>
+              <a href="http://http.developer.nvidia.com/GPUGems/gpugems_ch25.html">gpu gems</a>
+            </td>
+          </tr>
+
+        </table>
+
+      </section>
+      <section>
+        <h3>
+        <a id="user-content-examples-1" class="anchor" href="#examples-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Examples 1</h3>
+
+        <p>Lines</p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" width="450" src="images/cgTalk05/antialias.png">
+            </td>
+            <td>
+              <img style="background:white;" width="450" src="images/cgTalk05/antialias_zoom.png">
+            </td>
+          </tr>
+        </table>
+        <a href="http://www.codeproject.com/Articles/13360/Antialiasing-Wu-Algorithm">codeproject.com</a>
+      </section>
+      <section>
+        <h3>
+        <a id="user-content-examples-2" class="anchor" href="#examples-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Examples 2</h3>
+        <p>Polygons</p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" width="300" src="images/cgTalk05/scintilation.png"><br/>
+              Scintilation
+            </td>
+            <td>
+              <img style="background:white;" width="400" src="images/cgTalk05/hammer_no_fxaa.png">
+              <br/>
+              Complex object
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <a href="http://www.gdv.informatik.uni-frankfurt.de/lehre/ss2003/Folien/Vorlesung%20GDV/09.DK.AliasingUndAntialiasing.pdf">gdv.informatik.uni-frankfurt.de</a>
+            </td>
+            <td>
+            <a href="http://www.realtimerendering.com/blog/fxaa-rules-ok/">realtimerendering.com</a>
+            </td>
+          </tr>
+        </table>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Anti-Aliasing<br/> Brute-Force</h2>
+      </section>
+      <section>
+        <h3>FSAA/SSAA</h3>
+        <p>The straight-forward idea is to invoke brute-force methods:
+        <ul>
+        <li><b>double</b> the render-resolution: close to nyquist!<br />
+        Price: <b>~4</b>-times the work!*</li>
+        </ul>
+        </p>
+        <p>
+        In <b>FullScreenAntiAliasing</b> or <b>SuperSamplingAntiAliasing</b> the following approach is taken:
+        <ul>
+            <li>The vertex-stage is unchanged</li>
+            <li>Increase the Resolution/Renderbuffer by factor $n \in \mathbf{N}$<br/>
+                $\rightarrow$ a pixel is divided into $n \times n$ subpixel.
+            </li>
+            <li>All fragment related operations require $n^2$-times work </li>
+            <li>Use an appropriate (sampling) filter to <b>down-sample</b> the image to target resolution</li>
+        </ul>
+        </p>
+        <p>
+        *<i>Price: bandwidth + shading + down-sampling.</i>
+        </p>
+      </section>
+      <section>
+        <h3>FSAA filter kernels</h3>
+        <img style="background:white;" width="400" src="images/cgTalk05/supersampling-patterns.png"><br/>
+        <a href="https://mynameismjp.wordpress.com/2012/10/24/msaa-overview/">source</a>
+      </section>
+      <section>
+        <h3>MSAA</h3>
+        <p>
+        MultiSampleAntiAliasimg is a simplified, less demanding variant of FSAA:
+        <ul>
+          <li>For each rendered pixel a participating polygon is only shaded once, regardless of subpixels it occupies
+          <br/><br/>
+          </li>
+          <li>The coverage of an object and subpixel determine the final color blend. As a result only the edges are antialiased.</li>
+        </ul>
+        </p>
+        <p>
+        MSAA has the same choice of FSAA filter kernels that determine the downsampling. <b>Vulkan</b> lets you define custom filter patterns!.
+        </p>
+      </section>
+      <section>
+        <h3>MSAA in action</h3>
+        <img style="background:white;" width="600" src="images/cgTalk05/msaa_rasterization.png"><br/>
+        <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/cc627092(v=vs.85).aspx">msdn.microsoft.com</a>
+      </section>
+<!--      <section>
+        <h3>FSAA vs. MSAA</h3>
+      </section> -->
+      <section>
+        <h3>AlphaToCoverage</h3>
+        <p>
+          <b>Alpha to coverage</b> is an extension to <b>MSAA</b> that allows to cheaply mix alpha-blending and MSAA. The alpha value is factored in the MSAA downsampling and works well for <a href="http://http.developer.nvidia.com/GPUGems3/gpugems3_ch04.html" target="_new">1-bit transparency cutouts</a>.</p>
+          <p>Effectively transparent edges are treated as geometry edges.</p>
+        </p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/MSAA_badAlpha.png">
+            </td>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/MSAA_goodAlpha.png">
+            </td>
+          </tr>
+        </table>
+        Source: <a href="http://www.overclock.net/t/1329979/anti-aliasing-the-basics" target="_new">http://www.overclock.net/ ...</a>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Anti-Aliasing<br/>Render-specific</h2>
+      </section>
+      <section>
+        <h3>General Notes</h3>
+        <p>
+        There are ways to avoid aliasing. This is of course preferred to applying a fix later.</p>
+        <p> Generally the idea is to <b>avoid high-frequency</b> signals to be rendered. This can be acchieved by:
+        </p>
+        <ul>
+          <li>not drawing small items</li>
+          <li>having a textures with a proper fit for the designated output resolution</li>
+          <li>Not drawing something that has hard edges</li>
+          <li>...</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Line drawing</h3>
+        <p>
+        Traditional line drawing is done using some variant of Bresenham's algorithm:
+        </p>
+        <ul>
+        <li>walk along a line from start ro endpixel</li>
+        <li>use a decision term  to pick which pixel to fill</li>
+        </ul>
+        <p>
+        By interpreting the decision term not as a bool decider but an alpha-factor we can antialias the line (proposed by  Xiaolin Wu).
+        </p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/line_a_solidfill.png">
+            </td>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/line_b_firstrast.png">
+            </td>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/line_c_outline.png">
+            </td>
+          </tr>
+        </table>
+        Source: <a href="https://courses.engr.illinois.edu/ece390/archive/archive-f2000/mp/mp4/anti.html" target="_new">https://courses.engr.illinois.edu/...</a>
+      </section>
+      <section>    
+        <h3>PhoneWireAA</h3>
+        <p>
+        Another common problem is that modeled structures can become <b>too small</b> when viewed for afar. One goto example is phonewires, that are endangered by <b>scintilation</b>.
+        </p>
+          <img style="background:white;" src="images/cgTalk05/PhoneWireAAComp.png">
+        <p>
+        <a href="http://www.humus.name/index.php?page=3D&ID=89" target="_new">Emil Persson</a> propsed to handle these objects by extruding them in the vertex shader. In that stage they can be expanded to a minimal safe pixel width. This works because they are round and have the same width from every view-angle. 
+        </p>
+      </section>
+      <section>    
+        <h3>Derivatives</h3>
+        <p>
+        Shader-Deratives can be used to antialias <b>procedural patterns</b> created in the fragment. The frequency of the pattern  is evaluated and compared to the screen-based nyquist frequency. 
+        </p>
+        <ul>
+          <li>checker pattern on a ball</li>
+          <li>outline of line &amp; circle</li>
+        </ul>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" width="400" src="images/cgTalk05/OrangeBookDerivatives.png"><br/>
+            Source: <a href="http://wiki.labomedia.org/images/1/10/Orange_Book_-_OpenGL_Shading_Language_2nd_Edition.pdf" target="new">Orange Book</a>
+            </td>
+            <td>
+              <img style="background:white;" width="300" src="images/cgTalk05/DiamondSmoothstep.png"><br/>
+              Source: <a href="http://www.numb3r23.net/2015/08/17/using-fwidth-for-distance-based-anti-aliasing/" target="_new">www.numb3r23.net</a>
+            </td>
+          </tr>
+        </table>
+      </section>
+      <section>    
+        <h3>Dedicated shading functions</h3>
+        <p>
+        Some shading functions can introduce aliasing by introducing a high-frequency shading. This can be generated by e.g. 
+        </p>
+        <ul>
+          <li>rapidly changing normals from a badly sampled normal map or<br/><br/></li>
+          <li>a very high shininess of the blinn illumination that results in sparkle.</li>
+        </ul>
+        <p>
+        To compensate the effect there are dedicated techniques (e.g. LEAN mapping) that provide a proper sampling of the normals.
+        </p>
+        <img style="background:white;" width="800" src="images/cgTalk05/LeanMapping.png"><br/>
+        <a href="http://www.csee.umbc.edu/~olano/papers/lean/">Marc Olano, Dan Baker</a>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Anti-Aliasing<br/>PostProcess</h2>
+      </section>
+      <section>
+        <h3>General Notes</h3>
+        <p>
+        PostProcessing algorithms work <i>after the fact</i>: <br/>their input is an already rendered image.
+        </p>
+
+        <p>
+        Benefits:</p>
+        <ul>
+          <li><b>easy to integrate</b> - just render to a rendertarget and display using the AA-shader</li>
+          <li>(usually) <b>cheaper</b> than MSAA (bandwidth + shaded fragments!)</li>
+          <li>visually <b>good</b> results</li>
+          <li>works better than a blur (low-pass!);-)</li>
+        </ul>
+        <br/>
+        <p>
+        Downside:
+        </p>
+        <ul>
+          <li>Yes, it's a very specialized edge-detection = <b>pseudo anti-aliasing</b></li>
+          <li>Does not have access to <b>geometrical information</b></li>
+        </ul>
+      </section>
+      <section>    
+        <h3>MLAA &amp; SMAA</h3>
+        <p>
+        <b>Morpho-Logical-Anti-Aliasing</b> and the follow-up work <b>Subpixel-Morphological-Anti-Aliasing</b> are <b>morphological</b> filter. 
+        </p>
+        <p>Both detect <b>known alias-causing structures</b> and apply a proper filter.
+        </p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" width="200" src="images/cgTalk05/MLAA_1.png">
+            </td>
+            <td>
+              <img style="background:white;" width="200" src="images/cgTalk05/MLAA_2.png">
+            </td>
+            <td>
+              <img style="background:white;" width="200" src="images/cgTalk05/MLAA_3.png">
+            </td>
+            <td>
+              <img style="background:white;" width="200" src="images/cgTalk05/MLAA_4.png">
+            </td>
+            <td>
+              <img style="background:white;" width="200" src="images/cgTalk05/MLAA_5.png">
+            </td>
+          </tr>
+        </table>
+        <br/>
+        Source: <a href="http://iryoku.com/aacourse/downloads/04-Jimenez's-MLAA-&-SMAA-(Subpixel-Morphological-Anti-Aliasing).pptx" target="_new">iryoku.com</a>
+        <br/>
+        <p>
+        <i>Both methods are known to create very good results, but also to be demanding.</i>
+        </p>
+      </section>
+      <section>    
+        <h3>MLAA &amp; SMAA</h3>
+        <p>
+        Here's an overview oth the shapes MLAA can detect:
+        </p>
+        <img style="background:white;" width="800" src="images/cgTalk05/mlaa_patterns.png"><br/>
+        <a href="https://mynameismjp.wordpress.com/2012/10/24/msaa-overview/">source</a>
+      </section>
+      <section>    
+        <h3>FXAA</h3>
+        <p>
+        <b>Fast-approXimate-Anti-Aliasing</b> is also a <b>morphological</b> antialiasing  method, but not as demanding as <b>MLAA</b> and <b>SMAA</b>. 
+        </p>
+        <p>It has been described as an <i>effective heuristic blur</i> where a global quality setting sets the level the heuristic is evaluated.
+        </p>
+        <table>
+          <tr>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/hammer_no_fxaa.png">
+            </td>
+            <td>
+              <img style="background:white;" src="images/cgTalk05/hammer_fxaa.png">
+            </td>
+          </tr>
+        </table>
+        Source: <a href="http://www.realtimerendering.com/blog/tag/mlaa/" target="_new">http://www.realtimerendering.com/ ...</a>
+      </section>
+      <section>    
+        <h3>MLAA &amp; FXAA</h3>
+          <img style="background:white;" width="800" src="images/cgTalk05/Borderlands-1.JPG"><br/>
+          <a href="http://www.gamefaqs.com/boards/691087-playstation-4/65682527">source</a>
+      </section>
+      <section>    
+        <h3>MLAA &amp; FXAA</h3>
+          <img style="background:white;" width="800" src="images/cgTalk05/FxaaMlaa.png"><br/>
+          <a href="https://community.futuremark.com/forum/showthread.php?150099-Nvidias-FXAA-works-on-AMD-GPUs-too!/page5">source</a>
+      </section>
+      <section>    
+        <h3>MLAA &amp; FXAA</h3>
+          <img style="background:white;" width="800" src="images/cgTalk05/fhe.png"><br/>
+          <a href="http://forums.nexusmods.com/index.php?/topic/1049337-ultimate-lighting-overhaul-plus/page-3">source</a>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Anti-Aliasing<br/>Animation aware</h2>
+      </section>
+      <section>    
+        <h3>TXAA</h3>
+        <p>
+        <b>Temporal-Anti-Aliasing</b> (I'm lost on the X...) combines <b>MSAA</b> with a <b>temporal filter</b> that operates on <b>multiple frames</b>. It thus tackles <b>aliasing from animations</b> that is created when different anti-aliasing patterns are visible <b>throughout a frame-sequence</b>.
+        </p>
+        <img style="background:white;" src="images/cgTalk05/big_txaa-nv.jpg" width="700"><br/>
+        <a href="http://hothardware.com/reviews/nvidias-new-txaa-antialiasing-reviewed-explorered">source</a>
+        <p>
+        <b>TXAA</b> is a HW-dependant and requires a NVidia Kepler (GTX-600).</p>
+      </section>
+    </section>
+    <section>
+      <section class="center">
+        <h2>Recap &amp; Conclusion</h2>
+      </section>
+      <section>    
+        <h3>Recap: Abbreviations...</h3>
+        <p>
+          <ul>
+            <li>Full scene, Brute-Force:<br/>
+                <b>FSAA</b>/<b>SSAA</b> $\rightarrow$ full scene<br/>
+                <b>MSAA</b> $\rightarrow$ full scene, limited fragment operations
+                <br/><br/>
+            </li>
+            <li>Final image, PostProcess<br/>
+                <b>MLAA</b>/<b>SMAA</b> $\rightarrow$ morphological AA<br/>
+                <b>FXAA</b> $\rightarrow$ heuristic blur, lighter
+                <br/><br/>
+            </li>
+            <li>For animations<br/>
+                <b>TXAA</b> $\rightarrow$ animation, NVidia only!
+                <br/><br/>
+            </li>
+          </ul>
+        </p>
+      </section>
+      <section class="center">
+        <h2>Conclusions</h2>
+      </section>
+      <section>
+        <h3>Admit you have a problem!</h3>
+            <img src="images/cgTalk05/ShaderAliasingAnonymous_2.png">
+      </section>
+      <section>
+        <h3>Admit you have a problem!</h3>
+        <br/><br/>
+        <p>
+          <ul>
+            <li>Humans have evolved to <b>recognize aliasing</b>
+            <br/><br/>
+            </li>
+            <li>Aliasing is a <b>visual detractor</b> and therefore irritating at times
+            <br/><br/>
+            </li>
+            <li>Good choices regarding the to-be-rendered data and how to render it can help to <b>tame the aliasing</b>
+            <br/><br/>
+            </li>
+            <li>Even the <b>post-processor solutions can help</b>!
+            <br/><br/>
+            </li>
+            <li>Ultimately it's a <b>performance trade-off</b> (do we have the msecs?)
+            <br/><br/>
+            </li>
+          </ul>
+        </p>
+      </section>
+      <section>
+        <h3>Examples</h3>
+        <img src="images/cgTalk05/EnslavedAA.png"><br/>
+        <a href="http://www.eurogamer.net/videos/test-1-fxaa-vs-jimenez-mlaa" target="_new">FXAA vs. MLAA in Enslaved</a>
+        <br/>
+      </section>
+      <section>
+        <h3>Examples</h3>
+        <img src="images/cgTalk05/JimenezAA.png"><br/>
+        <a href="https://vimeo.com/31247769" target="_new">FXAA vs. SMAA</a>
+      </section>
+
+    </section>
+    <section>
+      <section class="center">
+        <h2>C'est fini!</h2>
+      </section>
+    </section>
+  </div>
+</div>
+
+<script>
+
+// load the WebGL examples & initialize the shaders
+function loadSamples() {
+  head.js(
+    "js/samples/simple2Ddistance1.js",
+    "js/samples/simple2Ddistance2.js",
+    "js/samples/metaballs2D.js",
+    "js/samples/pacman.js",
+    LoadShaders);
+}
+
+// presentation specific javascript setup
+function revealReadyCallBack()
+{
+  // We'll use some WebGL
+  head.js("lib/js/three.min.js");
+  head.js("lib/js/webgl-utils.js");
+  head.js("lib/js/webgl-debug.js");
+
+  // and other things
+  head.js("js/stats_bootstrap.js");
+  head.js("js/sampleLoader.js", loadSamples);
+
+  head.js("js/dat.gui.bootstrap.js");
+}
+</script>
+  
+    <!-- Optional libraries for code syntax highlighting and classList support in IE9 -->
+    <script src="lib/js/head.min.js"></script>
+
+    <script>
+      // Load the main reveal.js script
+      head.js('js/reveal.min.js', function() {
+        // Parse the query string into a key/value object
+        var query = {};
+
+        location.search.replace( /[A-Z0-9]+?=(\w*)/gi, function(a) {
+          query[ a.split( '=' ).shift() ] = a.split( '=' ).pop();
+        } );
+
+        // Fires when a slide with data-state=customevent is activated
+        Reveal.addEventListener( 'customevent', function() {
+          // console.log( '"customevent" has fired' );
+        } );
+
+        // Fires each time a new slide is activated
+        Reveal.addEventListener( 'slidechanged', function( event ) {
+          // event.previousSlide, event.currentSlide, event.indexh, event.indexv
+        } );
+
+        Reveal.initialize({
+          // Display controls in the bottom right corner
+          controls: true,
+          progress: true,
+          history: true,
+          loop: false,
+          mouseWheel: false,
+          rollingLinks: true,
+          theme: 'beige', 
+
+          center:false,
+
+          math: {
+            mathjax: 'https://cdn.mathjax.org/mathjax/latest/MathJax.js',
+                config: 'TeX-AMS_HTML-full'
+            },
+
+            dependencies: [
+            { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+            { src: 'plugin/zoom-js/zoom.js', async: true },
+            { src: 'plugin/notes/notes.js', async: true },
+            { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+            { src: 'socket.io/socket.io.js', async: true, condition: function() { return window.location.host === 'localhost:1947'; } },
+            { src: 'plugin/speakernotes/client.js', async: true, condition: function() { return window.location.host === 'localhost:1947'; } },
+                { src: 'plugin/math/math.js', async: true },
+            ],
+
+          // Transition style
+          transition: query.transition || 'linear' // default/cube/page/concave/linear(2d)
+        });
+        Reveal.addEventListener( 'ready', function( event ) {
+          if (typeof(revealReadyCallBack) == "function")
+          {
+            revealReadyCallBack();
+          }
+        } );
+        Reveal.configure({ slideNumber: 'c / t' });
+      } );
+      
+      // Load third party scripts
+      head.js("lib/js/jquery.min.js");
+      head.js("lib/js/jquery.hotkeys.js");
+      head.js("lib/js/underscore.min.js");
+      head.js("lib/js/dat.gui.js");
+      head.js("lib/js/EventEmitter.js");
+
+    </script>
+  
+  
+  </body>
+</html>
+

@@ -6,7 +6,8 @@ Several presentations about cg - computer graphics
 - 02 - Materials
 - 03 - Postprocessing & Images-effects
 - [04 - Distancefields](http://numb3r23.github.io/cgTalk/04_distancefields.html)
-- 05 - Shadows
+- [05 - Antialiasing](http://numb3r23.github.io/cgTalk/05_AntiAliasing.html)
+- 06 - Shadows
 
 
 ##  Acknowledgement
